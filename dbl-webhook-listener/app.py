@@ -15,7 +15,9 @@ def receive_data():
         
         # 1. Parse Data from The Things Stack
         # Note: The JSON structure depends on your specific LoRaWAN payload formatter
-        device_eui = data.get("end_device_ids", {}).get("device_id")
+        raw_id = data.get("end_device_ids", {}).get("device_id")
+        # FIX: Remove 'eui-' prefix and force Uppercase to match Dashboard format
+        device_eui = raw_id.replace("eui-", "").upper()
         uplink = data.get("uplink_message", {})
         payload = uplink.get("decoded_payload", {})
         
@@ -66,4 +68,5 @@ def receive_data():
         return "Error", 500
 
 if __name__ == "__main__":
+
     app.run(host='0.0.0.0', port=10000)
