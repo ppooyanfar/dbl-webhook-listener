@@ -68,7 +68,7 @@ def receive_data():
         data = request.json
         
         # 1. Parse Device ID (Clean format)
-        raw_id = data.get("end_device_ids", {}).get("device_id")
+        raw_id = data.get("end_device_ids", {}).get("dev_eui")
         device_eui = raw_id.replace("eui-", "").upper() if raw_id else None
         
         # 2. Extract Payload
@@ -101,7 +101,7 @@ def receive_data_v2():
         data = request.json
         
         # 1. Parse Device ID (Clean format)
-        raw_id = data.get("end_device_ids", {}).get("device_id")
+        raw_id = data.get("end_device_ids", {}).get("dev_eui")
         device_eui = raw_id.replace("eui-", "").upper() if raw_id else None
         
         # 2. Extract Payload
@@ -129,4 +129,5 @@ def receive_data_v2():
 
 if __name__ == "__main__":
     app.run(host='0.0.0.0', port=10000)
+
 
