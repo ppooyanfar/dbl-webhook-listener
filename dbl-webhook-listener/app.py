@@ -11,8 +11,8 @@ DB_URL = os.environ.get("DB_URL")
 # --- HELPER FUNCTION: Shared DB Logic ---
 def save_to_db(device_eui, temperature, humidity, co2, battery, full_json):
     """
-    Connects to the database and saves the reading. 
-    Returns True if successful, False otherwise.
+    Connects to the database and saves the reading.
+    Returns True if successful OR if the device is simply ignored.
     """
     if not DB_URL:
         print("Error: DB_URL not found")
@@ -22,7 +22,7 @@ def save_to_db(device_eui, temperature, humidity, co2, battery, full_json):
         conn = psycopg2.connect(DB_URL)
         cur = conn.cursor()
         
-        # Ensure tables exist (Safety check)
+        # Ensure tables exist
         cur.execute("""
             CREATE TABLE IF NOT EXISTS iot_readings (
                 id SERIAL PRIMARY KEY,
@@ -36,15 +36,26 @@ def save_to_db(device_eui, temperature, humidity, co2, battery, full_json):
             );
         """)
 
-        cur.execute("""
-            INSERT INTO iot_readings (device_eui, temperature, humidity, co2_level, battery_level, raw_payload)
-            VALUES (%s, %s, %s, %s, %s, %s)
-        """, (device_eui, temperature, humidity, co2, battery, json.dumps(full_json)))
-        
-        conn.commit()
+        # Try to insert the data
+        try:
+            cur.execute("""
+                INSERT INTO iot_readings (device_eui, temperature, humidity, co2_level, battery_level, raw_payload)
+                VALUES (%s, %s, %s, %s, %s, %s)
+            """, (device_eui, temperature, humidity, co2, battery, json.dumps(full_json)))
+            conn.commit()
+            print(f"Success: Saved data for {device_eui}")
+            
+        except psycopg2.IntegrityError:
+            # This catches the "Foreign Key Violation" (Device not registered)
+            conn.rollback()
+            print(f"Ignored: Device {device_eui} is not registered in the dashboard.")
+            # We return True so The Things Stack thinks everything is fine and keeps the webhook alive!
+            return True
+            
         cur.close()
         conn.close()
         return True
+
     except Exception as e:
         print(f"Database Error: {e}")
         return False
@@ -118,3 +129,4 @@ def receive_data_v2():
 
 if __name__ == "__main__":
     app.run(host='0.0.0.0', port=10000)
+
